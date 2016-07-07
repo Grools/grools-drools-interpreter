@@ -19,7 +19,7 @@ Field:
 - name
 - source
 
-Sybol:
+Symbol:
 - `==`
 - `!=`
 
