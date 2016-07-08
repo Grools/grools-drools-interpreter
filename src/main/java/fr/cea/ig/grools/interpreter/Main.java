@@ -115,7 +115,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        args = new String[]{"/media/sf_agc/proj/Grools/res/UP000000430-AbaylyiADP1/GenomeProperties/reasoner.grools"};
+        //args = new String[]{"/media/sf_agc/proj/Grools/res/UP000000430-AbaylyiADP1/GenomeProperties/reasoner.grools"};
         if( args.length != 1 ){
             System.err.println("Error "+APPNAME+" needs a grools file");
             showHelp();
@@ -175,8 +175,11 @@ public class Main {
                         Set<PriorKnowledge> priorKnowledges = null;
                         if ( matcher.group(2).equals("name") ) {
                             if ( matcher.group(3).equals("==") ) {
-                                priorKnowledges = new HashSet<>();
-                                priorKnowledges.add(reasoner.getPriorKnowledge(matcher.group(4)));
+                                final PriorKnowledge pk = reasoner.getPriorKnowledge(matcher.group(4));
+                                if( pk != null ) {
+                                    priorKnowledges = new HashSet<>();
+                                    priorKnowledges.add(pk);
+                                }
                             } else if ( matcher.group(3).equals("!=") ) {
                                 priorKnowledges = reasoner.getPriorKnowledges().stream()
                                                           .filter(pk -> pk.getName().equals(matcher.group(4)))
@@ -238,9 +241,11 @@ public class Main {
                         Set<Observation> observations = null;
                         if ( matcher.group(2).equals("name") ) {
                             if ( matcher.group(3).equals("==") ) {
-                                observations = reasoner.getObservations().stream()
-                                                       .filter(o -> o.getName().equals(matcher.group(4)))
-                                                       .collect(Collectors.toSet());
+                                final Observation observation = reasoner.getObservation(matcher.group(4));
+                                if( observation != null ){
+                                    observations = new HashSet<>();
+                                    observations.add(observation);
+                                }
                             } else if ( matcher.group(3).equals("!=") ) {
                                 observations = reasoner.getObservations().stream()
                                                        .filter(o -> ! o.getName().equals(matcher.group(4)))
