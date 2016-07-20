@@ -132,7 +132,7 @@ public class Main {
         final Scanner scanner = new Scanner(System.in);
         System.out.println("=== Query shell interpreter ===");
         System.out.println("Enter quit to leave");
-        final Pattern query = Pattern.compile("get\\s+(\\w+[[\\-]?\\w+]*)\\s+where\\s+(\\w+)\\s+([=!]{2})\\s+(\\w+)");
+        final Pattern query = Pattern.compile("get\\s+(\\w+[[\\-]?\\w+]*)\\s+where\\s+(\\w+)\\s+([=!]{2})\\s+([^\\s]+)");
         while ( isRunning ){
             System.out.print("> ");
             final String  input     = scanner.nextLine();
