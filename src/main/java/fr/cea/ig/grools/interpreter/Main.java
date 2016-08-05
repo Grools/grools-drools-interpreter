@@ -35,13 +35,30 @@ package fr.cea.ig.grools.interpreter;
 
 
 import ch.qos.logback.classic.Logger;
+import fr.cea.ig.grools.Verbosity;
+import org.jboss.aesh.cl.CommandDefinition;
+import org.jboss.aesh.cl.Option;
+import org.jboss.aesh.cl.completer.CompleterData;
+import org.jboss.aesh.cl.completer.OptionCompleter;
+import org.jboss.aesh.complete.CompleteOperation;
+import org.jboss.aesh.complete.Completion;
+import org.jboss.aesh.console.AeshConsole;
+import org.jboss.aesh.console.AeshConsoleBuilder;
+import org.jboss.aesh.console.Console;
+import org.jboss.aesh.console.command.Command;
+import org.jboss.aesh.console.command.CommandOperation;
+import org.jboss.aesh.console.command.CommandResult;
+import org.jboss.aesh.console.command.completer.CompleterInvocation;
+import org.jboss.aesh.console.command.invocation.CommandInvocation;
+import org.jboss.aesh.console.command.registry.AeshCommandRegistryBuilder;
+import org.jboss.aesh.console.command.registry.CommandRegistry;
+import org.jboss.aesh.console.settings.Settings;
+import org.jboss.aesh.terminal.CursorPosition;
+import org.slf4j.LoggerFactory;
+
 import fr.cea.ig.grools.Mode;
 import fr.cea.ig.grools.Reasoner;
 import fr.cea.ig.grools.drools.ReasonerImpl;
-import fr.cea.ig.grools.fact.Concept;
-import fr.cea.ig.grools.fact.Observation;
-import fr.cea.ig.grools.fact.PriorKnowledge;
-import fr.cea.ig.grools.fact.Relation;
 import lombok.NonNull;
 import org.kie.api.KieBase;
 import org.kie.api.marshalling.Marshaller;
@@ -50,19 +67,19 @@ import org.kie.api.marshalling.ObjectMarshallingStrategyAcceptor;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.KieSessionConfiguration;
 import org.kie.internal.marshalling.MarshallerFactory;
-import org.slf4j.LoggerFactory;
+
+
+import org.jboss.aesh.console.Prompt;
+import org.jboss.aesh.console.settings.SettingsBuilder;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.util.HashSet;
-import java.util.Scanner;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.StringTokenizer;
 
 /**
  *
@@ -74,210 +91,199 @@ import java.util.stream.Collectors;
  * @enduml
  */
 public class Main {
-    private final static Logger LOGGER  = (Logger) LoggerFactory.getLogger(Main.class);
+    private final static Logger LOGGER = ( Logger ) LoggerFactory.getLogger( Main.class );
     private final static String APPNAME = "grools-drools-interpreter";
 
-    private static Marshaller createMarshaller( @NonNull final KieBase kBase ){
-        final ObjectMarshallingStrategyAcceptor acceptor    = MarshallerFactory.newClassFilterAcceptor(new String[] { "*.*" });
-        final ObjectMarshallingStrategy         strategy    = MarshallerFactory.newSerializeMarshallingStrategy(acceptor);
-        final Marshaller                        marshaller  = MarshallerFactory.newMarshaller(kBase, new ObjectMarshallingStrategy[] { strategy });
+    private static Marshaller createMarshaller( @NonNull final KieBase kBase ) {
+        final ObjectMarshallingStrategyAcceptor acceptor = MarshallerFactory.newClassFilterAcceptor( new String[]{ "*.*" } );
+        final ObjectMarshallingStrategy strategy = MarshallerFactory.newSerializeMarshallingStrategy( acceptor );
+        final Marshaller marshaller = MarshallerFactory.newMarshaller( kBase, new ObjectMarshallingStrategy[]{ strategy } );
         return marshaller;
     }
 
-    private static Reasoner load(@NonNull final File file){
-        Reasoner                reasoner = null;
-        final FileInputStream   fis;
+    private static Reasoner load( @NonNull final File file ) {
+        Reasoner reasoner = null;
+        final FileInputStream fis;
         try {
-            fis = new FileInputStream(file);
-            final ObjectInputStream         ois         = new ObjectInputStream(fis);
-            final KieBase                   kBase       = (KieBase) ois.readObject();
-            final KieSessionConfiguration   kconf       = (KieSessionConfiguration) ois.readObject();
-            final Mode                      mode        = (Mode) ois.readObject();
-            final Marshaller                marshaller  = createMarshaller(kBase);
-            KieSession                      kieSession  = marshaller.unmarshall(fis, kconf, null);
-            reasoner = new ReasonerImpl(kBase, kieSession, mode );
+            fis = new FileInputStream( file );
+            final ObjectInputStream         ois         = new ObjectInputStream( fis );
+            final KieBase                   kBase       = ( KieBase )                   ois.readObject( );
+            final KieSessionConfiguration   kconf       = ( KieSessionConfiguration )   ois.readObject( );
+            final Mode                      mode        = ( Mode )                      ois.readObject( );
+            final Verbosity                 verbosity   = ( Verbosity )                 ois.readObject( );
+            final Marshaller                marshaller  = createMarshaller( kBase );
+            final KieSession                kieSession  = marshaller.unmarshall( fis, kconf, null );
+            reasoner = new ReasonerImpl( kieSession, mode, verbosity );
         } catch ( ClassNotFoundException e ) {
-            LOGGER.error( e.getMessage() );
-            System.exit(1);
+            LOGGER.error( e.getMessage( ) );
+            System.exit( 1 );
         } catch ( FileNotFoundException e ) {
-            LOGGER.error("File: " + file.toString() + "not found");
-            System.exit(1);
+            LOGGER.error( "File: " + file.toString( ) + "not found" );
+            System.exit( 1 );
         } catch ( IOException e ) {
-            LOGGER.error("Can not read/write into " + file.toString());
-            System.exit(1);
+            LOGGER.error( "Can not read/write into " + file.toString( ) );
+            System.exit( 1 );
         }
         return reasoner;
     }
 
-    private static void showHelp(){
-        System.out.println( APPNAME+" grools_file" );
-        System.out.println( APPNAME+" -h        display this help" );
+    private static void showHelp( ) {
+        System.out.println( APPNAME + " grools_file" );
+        System.out.println( APPNAME + " -h        display this help" );
     }
 
-    public static void main(String[] args) {
+    public static void main( String[] args ) {
         //args = new String[]{"/media/sf_agc/proj/Grools/res/UP000000430-AbaylyiADP1/GenomeProperties/reasoner.grools"};
-        if( args.length != 1 ){
-            System.err.println("Error "+APPNAME+" needs a grools file");
-            showHelp();
-            System.exit(1);
+        // args = new String[]{"/media/sf_agc/proj/Grools/res/UP000000430-AbaylyiADP1/Unipathway-new/reasoner.grools"};
+        if ( args.length != 1 ) {
+            System.err.println( "Error " + APPNAME + " needs a grools file" );
+            showHelp( );
+            System.exit( 1 );
+        } else if ( args[ 0 ].equals( "-h" ) ) {
+            showHelp( );
+            System.exit( 0 );
         }
-        else if( args[0].equals("-h") ){
-            showHelp();
-            System.exit(0);
+
+        final Reasoner reasoner = load( new File( args[ 0 ] ) );
+
+        System.out.println( "=== Query shell interpreter ===" );
+        System.out.println( "Enter quit to leave" );
+        final Settings settings = new SettingsBuilder( ).logging( false )
+                                                        .enableMan( false )
+                                                        .readInputrc( false )
+                                                        .create( );
+        final Prompt prompt = new Prompt("> ");
+        final Console console = new Console( settings );
+        console.setPrompt( prompt );
+        console.setCompletionEnabled( true );
+        console.addCompletion( new GroolsCompleter( console ) );
+        console.setConsoleCallback( new GroolsCallback( console, reasoner ) );
+        console.start();
+
+    }
+
+    private static final class GroolsCompleter implements Completion {
+        private final Console console;
+
+        private GroolsCompleter( final Console console ) {
+            this.console = console;
         }
 
-        final Reasoner reasoner = load( new File(args[0]) );
 
-        boolean isRunning = true;
-        final Scanner scanner = new Scanner(System.in);
-        System.out.println("=== Query shell interpreter ===");
-        System.out.println("Enter quit to leave");
-        final Pattern query = Pattern.compile("get\\s+(\\w+[[\\-]?\\w+]*)\\s+where\\s+(\\w+)\\s+([=!]{2})\\s+([^\\s]+)");
-        while ( isRunning ){
-            System.out.print("> ");
-            final String  input     = scanner.nextLine();
-            if( input.equals("quit") )
-                isRunning=false;
-            else{
-                final Matcher matcher   = query.matcher(input);
-                if( matcher.find() ) {
-                    if ( matcher.group(1).equals("concepts") ) {
-                        Set<Concept> concepts = null;
-                        if ( matcher.group(2).equals("name") ) {
-                            if ( matcher.group(3).equals("==") ) {
-                                concepts = new HashSet<>();
-                                concepts.add(reasoner.getConcept(matcher.group(4)));
-                            } else if ( matcher.group(3).equals("!=") ) {
-                                concepts = reasoner.getConcepts().stream()
-                                                   .filter(c -> ! c.getName().equals(matcher.group(4)))
-                                                   .collect(Collectors.toSet());
-                            } else
-                                System.err.println("Unsupported query using symbol: " + matcher.group(3));
-                        } else if ( matcher.group(2).equals("source") ) {
-                            if ( matcher.group(3).equals("==") ) {
-                                concepts = reasoner.getConcepts().stream()
-                                                   .filter(c -> c.getSource().equals(matcher.group(4)))
-                                                   .collect(Collectors.toSet());
-                            } else if ( matcher.group(3).equals("!=") ) {
-                                concepts = reasoner.getConcepts().stream()
-                                                   .filter(c -> ! c.getSource().equals(matcher.group(4)))
-                                                   .collect(Collectors.toSet());
-                            } else
-                                System.err.println("Unsupported query using symbol: " + matcher.group(3));
-                        } else {
-                            System.err.println("Unsupported query using field: " + matcher.group(2));
-                        }
-                        if( concepts == null || concepts.isEmpty() )
-                            System.out.println("Any concepts match the constrain");
-                        else
-                            concepts.stream().forEach(System.out::println);
-                    } else if ( matcher.group(1).equals("prior-knowledges") ) {
-                        Set<PriorKnowledge> priorKnowledges = null;
-                        if ( matcher.group(2).equals("name") ) {
-                            if ( matcher.group(3).equals("==") ) {
-                                final PriorKnowledge pk = reasoner.getPriorKnowledge(matcher.group(4));
-                                if( pk != null ) {
-                                    priorKnowledges = new HashSet<>();
-                                    priorKnowledges.add(pk);
-                                }
-                            } else if ( matcher.group(3).equals("!=") ) {
-                                priorKnowledges = reasoner.getPriorKnowledges().stream()
-                                                          .filter(pk -> pk.getName().equals(matcher.group(4)))
-                                                          .collect(Collectors.toSet());
-                            } else
-                                System.err.println("Unsupported query using symbol: " + matcher.group(3));
-                        } else if ( matcher.group(2).equals("source") ) {
-                            if ( matcher.group(3).equals("==") ) {
-                                priorKnowledges = reasoner.getPriorKnowledges().stream()
-                                                          .filter(pk -> pk.getSource().equals(matcher.group(4)))
-                                                          .collect(Collectors.toSet());
-                            } else if ( matcher.group(3).equals("!=") ) {
-                                priorKnowledges = reasoner.getPriorKnowledges().stream()
-                                                          .filter(pk -> ! pk.getSource().equals(matcher.group(4)))
-                                                          .collect(Collectors.toSet());
-                            } else
-                                System.err.println("Unsupported query using symbol: " + matcher.group(3));
-                        } else {
-                            System.err.println("Unsupported query using field: " + matcher.group(2));
-                        }
-                        if( priorKnowledges == null || priorKnowledges.isEmpty() )
-                            System.out.println("Any prior-knowledges match the constrain");
-                        else
-                            priorKnowledges.stream().forEach(System.out::println);
+        @Override
+        public void complete( final CompleteOperation completeOperation ) {
+            final String    line        = completeOperation.getBuffer( ).replace( "\\s+", " " );
+            final String[]  tokens      = line.split( " " );
+            int             spacePos    = line.lastIndexOf( ' ' );
+            long            spaceNum    = line.codePoints().filter( ch -> ch == ' ' ).count();
+            List<String>    candidates  = new ArrayList<>();
+            //System.out.printf( "space, count: %d last position: %d\n", spaceNum, spacePos );
+            if( spaceNum == 0  ) {
+                if( line.isEmpty() ) {
+                    candidates.add( "get" );
+                    candidates.add( "quit" );
+                }
+                else if ( completeOperation.getBuffer( ).startsWith( "g" ) )
+                    candidates.add( "get" );
+                else if ( completeOperation.getBuffer( ).startsWith( "q" ) )
+                    candidates.add( "quit" );
 
-                    } else if ( matcher.group(1).equals("relations") ) {
-                        Set<Relation> relations = null;
-                        if ( matcher.group(2).equals("source") ) {
-                            if ( matcher.group(3).equals("==") ) {
-                                relations = reasoner.getRelations().stream()
-                                                    .filter(r -> r.getSource().getName().equals(matcher.group(4)))
-                                                    .collect(Collectors.toSet());
-                            } else if ( matcher.group(3).equals("!=") ) {
-                                relations = reasoner.getRelations().stream()
-                                                    .filter(r -> ! r.getSource().getName().equals(matcher.group(4)))
-                                                    .collect(Collectors.toSet());
-                            } else
-                                System.err.println("Unsupported query using symbol: " + matcher.group(3));
-                        } else if ( matcher.group(2).equals("target") ) {
-                            if ( matcher.group(3).equals("==") ) {
-                                relations = reasoner.getRelations().stream()
-                                                    .filter(r -> r.getTarget().getName().equals(matcher.group(4)))
-                                                    .collect(Collectors.toSet());
-                            } else if ( matcher.group(3).equals("!=") ) {
-                                relations = reasoner.getRelations().stream()
-                                                    .filter(r -> ! r.getTarget().getName().equals(matcher.group(4)))
-                                                    .collect(Collectors.toSet());
-                            } else
-                                System.err.println("Unsupported query using symbol: " + matcher.group(3));
-                        } else {
-                            System.err.println("Unsupported query using field: " + matcher.group(2));
-                        }
-                        if( relations == null || relations.isEmpty() )
-                            System.out.println("Any relations match the constrain");
-                        else
-                            relations.stream().forEach(System.out::println);
-
-                    } else if ( matcher.group(1).equals("observations") ) {
-                        Set<Observation> observations = null;
-                        if ( matcher.group(2).equals("name") ) {
-                            if ( matcher.group(3).equals("==") ) {
-                                final Observation observation = reasoner.getObservation(matcher.group(4));
-                                if( observation != null ){
-                                    observations = new HashSet<>();
-                                    observations.add(observation);
-                                }
-                            } else if ( matcher.group(3).equals("!=") ) {
-                                observations = reasoner.getObservations().stream()
-                                                       .filter(o -> ! o.getName().equals(matcher.group(4)))
-                                                       .collect(Collectors.toSet());
-                            } else
-                                System.err.println("Unsupported query using symbol: " + matcher.group(3));
-                        } else if ( matcher.group(2).equals("source") ) {
-                            if ( matcher.group(3).equals("==") ) {
-                                observations = reasoner.getObservations().stream()
-                                                       .filter(o -> o.getSource().equals(matcher.group(4)))
-                                                       .collect(Collectors.toSet());
-                            } else if ( matcher.group(3).equals("!=") ) {
-                                observations = reasoner.getObservations().stream()
-                                                       .filter(o -> ! o.getSource().equals(matcher.group(4)))
-                                                       .collect(Collectors.toSet());
-                            } else
-                                System.err.println("Unsupported query using symbol: " + matcher.group(3));
-                        } else {
-                            System.err.println("Unsupported query using field: " + matcher.group(2));
-                        }
-                        if( observations == null || observations.isEmpty() )
-                            System.out.println("Any relations match the constrain");
-                        else
-                            observations.stream().forEach(System.out::println);
-
-                    } else {
-                        System.err.println("Unsupported query using type: " + matcher.group(1));
+            }
+            else {
+                completeOperation.setOffset( spacePos + console.getPrompt().getLength() -1 );
+                final String token = ( line.length() > spacePos ) ? line.substring( spacePos+1 ) : "";
+                if( spaceNum == 1 ) {
+                    if ( token.isEmpty( ) ) {
+                        candidates.add( "concept" );
+                        candidates.add( "expectation" );
+                        candidates.add( "observation" );
+                        candidates.add( "prediction" );
+                        candidates.add( "prior-knowledge" );
+                        candidates.add( "quit" );
+                        candidates.add( "relation" );
+                    }
+                    else if ( token.startsWith( "c" ) )
+                        candidates.add( "concept" );
+                    else if ( token.startsWith( "e" ) )
+                        candidates.add( "expectation" );
+                    else if ( token.startsWith( "o" ) )
+                        candidates.add( "observation" );
+                    else if ( token.startsWith( "q" ) )
+                        candidates.add( "quit" );
+                    else if ( token.startsWith( "pri" ) )
+                        candidates.add( "prior-knowledge" );
+                    else if ( token.startsWith( "pre" ) )
+                        candidates.add( "prediction" );
+                    else if ( token.startsWith( "p" ) ) {
+                        candidates.add( "prediction" );
+                        candidates.add( "prior-knowledge" );
+                    }
+                    else if ( token.startsWith( "r" ) )
+                        candidates.add( "relation" );
+                }
+                else if( spaceNum == 2 ){
+                    candidates.add( "where" );
+                }
+                else if( spaceNum == 3 ){
+                    switch ( tokens[1] ){
+                        case "prior-knowledge":
+                            if ( token.isEmpty( ) ) {
+                                candidates.add( "expectation" );
+                                candidates.add( "conclusion" );
+                                candidates.add( "name" );
+                                candidates.add( "prediction" );
+                            }
+                            else if( token.startsWith( "e" ) )
+                                candidates.add( "expectation" );
+                            else if( token.startsWith( "c" ) )
+                                candidates.add( "conclusion" );
+                            else if( token.startsWith( "n" ) )
+                                candidates.add( "name" );
+                            else if( token.startsWith( "p" ) )
+                                candidates.add( "prediction" );
+                            break;
+                        case "observation":
+                        case "prediction":
+                        case "expectation":
+                        case "concept":
+                            candidates.add( "name" );
+                            break;
+                        case "relation":
+                            if ( token.isEmpty( ) ) {
+                                candidates.add( "source" );
+                                candidates.add( "target" );
+                            }
+                            else if( token.startsWith( "s" ) )
+                                candidates.add( "source" );
+                            else if( token.startsWith( "t" ) )
+                                candidates.add( "target" );
+                            break;
                     }
                 }
-                else
-                    System.err.println("Unsuported expression: "+input);
+                else if( spaceNum == 4 ){
+                    if ( token.isEmpty( ) ) {
+                        candidates.add( "==" );
+                        candidates.add( "!=" );
+                        candidates.add( ">" );
+                        candidates.add( ">=" );
+                        candidates.add( "<" );
+                        candidates.add( "<=" );
+                    }
+                    else if( token.startsWith( "=" ) )
+                        candidates.add( "==" );
+                    else if( token.startsWith( "!" ) )
+                        candidates.add( "!=" );
+                    else if( token.startsWith( ">" ) ) {
+                        candidates.add( ">" );
+                        candidates.add( ">=" );
+                    }
+                    else if( token.startsWith( "<" ) ) {
+                        candidates.add( "<" );
+                        candidates.add( "<=" );
+                    }
+                }
             }
+            completeOperation.addCompletionCandidates(candidates );
         }
     }
 }
