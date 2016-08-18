@@ -1,7 +1,6 @@
 package fr.cea.ig.grools.interpreter;
 
 import fr.cea.ig.grools.Reasoner;
-import fr.cea.ig.grools.fact.Concept;
 import fr.cea.ig.grools.fact.Observation;
 import fr.cea.ig.grools.fact.PriorKnowledge;
 import org.jboss.aesh.console.Console;
@@ -39,121 +38,149 @@ final class GroolsCallback implements ConsoleCallback {
             final Matcher matcher = query.matcher( input );
             final Set< Object > objects = new HashSet<>( );
             if ( matcher.find( ) ) {
-                if ( matcher.group( 1 ).equals( "concept" ) ) {
+                if ( matcher.group( 1 ).equals( "concepts" ) ) {
                     if ( matcher.group( 2 ).equals( "name" ) ) {
                         if ( matcher.group( 3 ).equals( "==" ) ) {
                             objects.add( reasoner.getConcept( matcher.group( 4 ) ) );
-                        } else if ( matcher.group( 3 ).equals( "!=" ) ) {
+                        }
+                        else if ( matcher.group( 3 ).equals( "!=" ) ) {
                             reasoner.getConcepts( )
                                     .stream( )
                                     .filter( c -> !c.getName( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else
+                        }
+                        else
                             System.err.println( "Unsupported query using symbol: " + matcher.group( 3 ) );
-                    } else if ( matcher.group( 2 ).equals( "source" ) ) {
+                    }
+                    else if ( matcher.group( 2 ).equals( "source" ) ) {
                         if ( matcher.group( 3 ).equals( "==" ) ) {
                             reasoner.getConcepts( )
                                     .stream( )
                                     .filter( c -> c.getSource( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toSet( ) );
-                        } else if ( matcher.group( 3 ).equals( "!=" ) ) {
+                        }
+                        else if ( matcher.group( 3 ).equals( "!=" ) ) {
                             reasoner.getConcepts( )
                                     .stream( )
                                     .filter( c -> !c.getSource( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else
+                        }
+                        else
                             System.err.println( "Unsupported query using symbol: " + matcher.group( 3 ) );
-                    } else {
+                    }
+                    else {
                         System.err.println( "Unsupported query using field: " + matcher.group( 2 ) );
                     }
-                } else if ( matcher.group( 1 ).equals( "prior-knowledge" ) ) {
+                }
+                else if ( matcher.group( 1 ).equals( "prior-knowledges" ) ) {
                     if ( matcher.group( 2 ).equals( "name" ) ) {
                         if ( matcher.group( 3 ).equals( "==" ) ) {
                             final PriorKnowledge pk = reasoner.getPriorKnowledge( matcher.group( 4 ) );
                             if ( pk != null )
                                 objects.add( pk );
-                        } else if ( matcher.group( 3 ).equals( "!=" ) ) {
+                        }
+                        else if ( matcher.group( 3 ).equals( "!=" ) ) {
                             reasoner.getPriorKnowledges( )
                                     .stream( )
                                     .filter( pk -> pk.getName( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else
+                        }
+                        else
                             System.err.println( "Unsupported query using symbol: " + matcher.group( 3 ) );
-                    } else if ( matcher.group( 2 ).equals( "source" ) ) {
+                    }
+                    else if ( matcher.group( 2 ).equals( "source" ) ) {
                         if ( matcher.group( 3 ).equals( "==" ) ) {
                             reasoner.getPriorKnowledges( )
                                     .stream( )
                                     .filter( pk -> pk.getSource( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else if ( matcher.group( 3 ).equals( "!=" ) ) {
+                        }
+                        else if ( matcher.group( 3 ).equals( "!=" ) ) {
                             reasoner.getPriorKnowledges( ).stream( )
                                     .filter( pk -> !pk.getSource( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else
+                        }
+                        else
                             System.err.println( "Unsupported query using symbol: " + matcher.group( 3 ) );
-                    } else {
+                    }
+                    else {
                         System.err.println( "Unsupported query using field: " + matcher.group( 2 ) );
                     }
 
-                } else if ( matcher.group( 1 ).equals( "relations" ) ) {
+                }
+                else if ( matcher.group( 1 ).equals( "relations" ) ) {
                     if ( matcher.group( 2 ).equals( "source" ) ) {
                         if ( matcher.group( 3 ).equals( "==" ) ) {
                             reasoner.getRelations( )
                                     .stream( )
                                     .filter( r -> r.getSource( ).getName( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else if ( matcher.group( 3 ).equals( "!=" ) ) {
+                        }
+                        else if ( matcher.group( 3 ).equals( "!=" ) ) {
                             reasoner.getRelations( )
                                     .stream( )
                                     .filter( r -> !r.getSource( ).getName( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else
+                        }
+                        else
                             System.err.println( "Unsupported query using symbol: " + matcher.group( 3 ) );
-                    } else if ( matcher.group( 2 ).equals( "target" ) ) {
+                    }
+                    else if ( matcher.group( 2 ).equals( "target" ) ) {
                         if ( matcher.group( 3 ).equals( "==" ) ) {
                             reasoner.getRelations( )
                                     .stream( )
                                     .filter( r -> r.getTarget( ).getName( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else if ( matcher.group( 3 ).equals( "!=" ) ) {
+                        }
+                        else if ( matcher.group( 3 ).equals( "!=" ) ) {
                             reasoner.getRelations( ).stream( )
                                     .filter( r -> !r.getTarget( ).getName( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else
+                        }
+                        else
                             System.err.println( "Unsupported query using symbol: " + matcher.group( 3 ) );
-                    } else {
+                    }
+                    else {
                         System.err.println( "Unsupported query using field: " + matcher.group( 2 ) );
                     }
 
-                } else if ( matcher.group( 1 ).equals( "observations" ) ) {
+                }
+                else if ( matcher.group( 1 ).equals( "observations" ) ) {
                     if ( matcher.group( 2 ).equals( "name" ) ) {
                         if ( matcher.group( 3 ).equals( "==" ) ) {
                             final Observation observation = reasoner.getObservation( matcher.group( 4 ) );
                             if ( observation != null )
                                 objects.add( observation );
-                        } else if ( matcher.group( 3 ).equals( "!=" ) ) {
+                        }
+                        else if ( matcher.group( 3 ).equals( "!=" ) ) {
                             reasoner.getObservations( ).stream( )
                                     .filter( o -> !o.getName( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else
+                        }
+                        else
                             System.err.println( "Unsupported query using symbol: " + matcher.group( 3 ) );
-                    } else if ( matcher.group( 2 ).equals( "source" ) ) {
+                    }
+                    else if ( matcher.group( 2 ).equals( "source" ) ) {
                         if ( matcher.group( 3 ).equals( "==" ) ) {
                             reasoner.getObservations( )
                                     .stream( )
                                     .filter( o -> o.getSource( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else if ( matcher.group( 3 ).equals( "!=" ) ) {
+                        }
+                        else if ( matcher.group( 3 ).equals( "!=" ) ) {
                             reasoner.getObservations( ).stream( )
                                     .filter( o -> !o.getSource( ).equals( matcher.group( 4 ) ) )
                                     .collect( Collectors.toCollection( ( ) -> objects ) );
-                        } else
+                        }
+                        else
                             System.err.println( "Unsupported query using symbol: " + matcher.group( 3 ) );
-                    } else {
+                    }
+                    else {
                         System.err.println( "Unsupported query using field: " + matcher.group( 2 ) );
                     }
 
-                } else {
+                }
+                else {
                     System.err.println( "Unsupported query using type: " + matcher.group( 1 ) );
                 }
 
@@ -161,7 +188,8 @@ final class GroolsCallback implements ConsoleCallback {
                     System.out.println( "Any concepts match the constrain" );
                 else
                     objects.forEach( System.out::println );
-            } else
+            }
+            else
                 System.err.println( "Unsuported expression: " + input );
         }
 

@@ -36,39 +36,17 @@ package fr.cea.ig.grools.interpreter;
 
 import ch.qos.logback.classic.Logger;
 import fr.cea.ig.grools.Verbosity;
-import org.jboss.aesh.cl.CommandDefinition;
-import org.jboss.aesh.cl.Option;
-import org.jboss.aesh.cl.completer.CompleterData;
-import org.jboss.aesh.cl.completer.OptionCompleter;
 import org.jboss.aesh.complete.CompleteOperation;
 import org.jboss.aesh.complete.Completion;
-import org.jboss.aesh.console.AeshConsole;
-import org.jboss.aesh.console.AeshConsoleBuilder;
 import org.jboss.aesh.console.Console;
-import org.jboss.aesh.console.command.Command;
-import org.jboss.aesh.console.command.CommandOperation;
-import org.jboss.aesh.console.command.CommandResult;
-import org.jboss.aesh.console.command.completer.CompleterInvocation;
-import org.jboss.aesh.console.command.invocation.CommandInvocation;
-import org.jboss.aesh.console.command.registry.AeshCommandRegistryBuilder;
-import org.jboss.aesh.console.command.registry.CommandRegistry;
 import org.jboss.aesh.console.settings.Settings;
-import org.jboss.aesh.terminal.CursorPosition;
 import org.slf4j.LoggerFactory;
 
 import fr.cea.ig.grools.Mode;
 import fr.cea.ig.grools.Reasoner;
-import fr.cea.ig.grools.drools.ReasonerImpl;
+import fr.cea.ig.grools.reasoner.ConceptGraph;
+import fr.cea.ig.grools.reasoner.ReasonerImpl;
 import lombok.NonNull;
-import org.kie.api.KieBase;
-import org.kie.api.marshalling.Marshaller;
-import org.kie.api.marshalling.ObjectMarshallingStrategy;
-import org.kie.api.marshalling.ObjectMarshallingStrategyAcceptor;
-import org.kie.api.runtime.KieSession;
-import org.kie.api.runtime.KieSessionConfiguration;
-import org.kie.internal.marshalling.MarshallerFactory;
-
-
 import org.jboss.aesh.console.Prompt;
 import org.jboss.aesh.console.settings.SettingsBuilder;
 
@@ -79,7 +57,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringTokenizer;
 
 /**
  *
@@ -94,33 +71,27 @@ public class Main {
     private final static Logger LOGGER = ( Logger ) LoggerFactory.getLogger( Main.class );
     private final static String APPNAME = "grools-drools-interpreter";
 
-    private static Marshaller createMarshaller( @NonNull final KieBase kBase ) {
-        final ObjectMarshallingStrategyAcceptor acceptor = MarshallerFactory.newClassFilterAcceptor( new String[]{ "*.*" } );
-        final ObjectMarshallingStrategy strategy = MarshallerFactory.newSerializeMarshallingStrategy( acceptor );
-        final Marshaller marshaller = MarshallerFactory.newMarshaller( kBase, new ObjectMarshallingStrategy[]{ strategy } );
-        return marshaller;
-    }
-
     private static Reasoner load( @NonNull final File file ) {
         Reasoner reasoner = null;
         final FileInputStream fis;
         try {
             fis = new FileInputStream( file );
-            final ObjectInputStream         ois         = new ObjectInputStream( fis );
-            final KieBase                   kBase       = ( KieBase )                   ois.readObject( );
-            final KieSessionConfiguration   kconf       = ( KieSessionConfiguration )   ois.readObject( );
-            final Mode                      mode        = ( Mode )                      ois.readObject( );
-            final Verbosity                 verbosity   = ( Verbosity )                 ois.readObject( );
-            final Marshaller                marshaller  = createMarshaller( kBase );
-            final KieSession                kieSession  = marshaller.unmarshall( fis, kconf, null );
-            reasoner = new ReasonerImpl( kieSession, mode, verbosity );
-        } catch ( ClassNotFoundException e ) {
+            final ObjectInputStream ois = new ObjectInputStream( fis );
+            final boolean hasBeenProceesed = ois.readBoolean( );
+            final Mode mode = ( Mode ) ois.readObject( );
+            final Verbosity verbosity = ( Verbosity ) ois.readObject( );
+            final ConceptGraph graph = ( ConceptGraph ) ois.readObject( );
+            reasoner = new ReasonerImpl( graph, mode, verbosity, hasBeenProceesed );
+        }
+        catch ( ClassNotFoundException e ) {
             LOGGER.error( e.getMessage( ) );
             System.exit( 1 );
-        } catch ( FileNotFoundException e ) {
+        }
+        catch ( FileNotFoundException e ) {
             LOGGER.error( "File: " + file.toString( ) + "not found" );
             System.exit( 1 );
-        } catch ( IOException e ) {
+        }
+        catch ( IOException e ) {
             LOGGER.error( "Can not read/write into " + file.toString( ) );
             System.exit( 1 );
         }
@@ -134,12 +105,13 @@ public class Main {
 
     public static void main( String[] args ) {
         //args = new String[]{"/media/sf_agc/proj/Grools/res/UP000000430-AbaylyiADP1/GenomeProperties/reasoner.grools"};
-        // args = new String[]{"/media/sf_agc/proj/Grools/res/UP000000430-AbaylyiADP1/Unipathway-new/reasoner.grools"};
+        //args = new String[]{"/media/sf_agc/proj/Grools/res/UP000000430-AbaylyiADP1/18082016-Unipathway/reasoner.grools"};
         if ( args.length != 1 ) {
             System.err.println( "Error " + APPNAME + " needs a grools file" );
             showHelp( );
             System.exit( 1 );
-        } else if ( args[ 0 ].equals( "-h" ) ) {
+        }
+        else if ( args[ 0 ].equals( "-h" ) ) {
             showHelp( );
             System.exit( 0 );
         }
@@ -152,13 +124,13 @@ public class Main {
                                                         .enableMan( false )
                                                         .readInputrc( false )
                                                         .create( );
-        final Prompt prompt = new Prompt("> ");
+        final Prompt prompt = new Prompt( "> " );
         final Console console = new Console( settings );
         console.setPrompt( prompt );
         console.setCompletionEnabled( true );
         console.addCompletion( new GroolsCompleter( console ) );
         console.setConsoleCallback( new GroolsCallback( console, reasoner ) );
-        console.start();
+        console.start( );
 
     }
 
@@ -172,14 +144,14 @@ public class Main {
 
         @Override
         public void complete( final CompleteOperation completeOperation ) {
-            final String    line        = completeOperation.getBuffer( ).replace( "\\s+", " " );
-            final String[]  tokens      = line.split( " " );
-            int             spacePos    = line.lastIndexOf( ' ' );
-            long            spaceNum    = line.codePoints().filter( ch -> ch == ' ' ).count();
-            List<String>    candidates  = new ArrayList<>();
+            final String line = completeOperation.getBuffer( ).replace( "\\s+", " " );
+            final String[] tokens = line.split( " " );
+            int spacePos = line.lastIndexOf( ' ' );
+            long spaceNum = line.codePoints( ).filter( ch -> ch == ' ' ).count( );
+            List< String > candidates = new ArrayList<>( );
             //System.out.printf( "space, count: %d last position: %d\n", spaceNum, spacePos );
-            if( spaceNum == 0  ) {
-                if( line.isEmpty() ) {
+            if ( spaceNum == 0 ) {
+                if ( line.isEmpty( ) ) {
                     candidates.add( "get" );
                     candidates.add( "quit" );
                 }
@@ -190,77 +162,77 @@ public class Main {
 
             }
             else {
-                completeOperation.setOffset( spacePos + console.getPrompt().getLength() -1 );
-                final String token = ( line.length() > spacePos ) ? line.substring( spacePos+1 ) : "";
-                if( spaceNum == 1 ) {
+                completeOperation.setOffset( spacePos + console.getPrompt( ).getLength( ) - 1 );
+                final String token = ( line.length( ) > spacePos ) ? line.substring( spacePos + 1 ) : "";
+                if ( spaceNum == 1 ) {
                     if ( token.isEmpty( ) ) {
-                        candidates.add( "concept" );
-                        candidates.add( "expectation" );
-                        candidates.add( "observation" );
-                        candidates.add( "prediction" );
-                        candidates.add( "prior-knowledge" );
+                        candidates.add( "concepts" );
+                        candidates.add( "expectations" );
+                        candidates.add( "observations" );
+                        candidates.add( "predictions" );
+                        candidates.add( "prior-knowledges" );
                         candidates.add( "quit" );
-                        candidates.add( "relation" );
+                        candidates.add( "relations" );
                     }
                     else if ( token.startsWith( "c" ) )
-                        candidates.add( "concept" );
+                        candidates.add( "concepts" );
                     else if ( token.startsWith( "e" ) )
-                        candidates.add( "expectation" );
+                        candidates.add( "expectations" );
                     else if ( token.startsWith( "o" ) )
-                        candidates.add( "observation" );
+                        candidates.add( "observations" );
                     else if ( token.startsWith( "q" ) )
                         candidates.add( "quit" );
                     else if ( token.startsWith( "pri" ) )
-                        candidates.add( "prior-knowledge" );
+                        candidates.add( "prior-knowledges" );
                     else if ( token.startsWith( "pre" ) )
-                        candidates.add( "prediction" );
+                        candidates.add( "predictions" );
                     else if ( token.startsWith( "p" ) ) {
-                        candidates.add( "prediction" );
-                        candidates.add( "prior-knowledge" );
+                        candidates.add( "predictions" );
+                        candidates.add( "prior-knowledges" );
                     }
                     else if ( token.startsWith( "r" ) )
-                        candidates.add( "relation" );
+                        candidates.add( "relations" );
                 }
-                else if( spaceNum == 2 ){
+                else if ( spaceNum == 2 ) {
                     candidates.add( "where" );
                 }
-                else if( spaceNum == 3 ){
-                    switch ( tokens[1] ){
-                        case "prior-knowledge":
+                else if ( spaceNum == 3 ) {
+                    switch ( tokens[ 1 ] ) {
+                        case "prior-knowledges":
                             if ( token.isEmpty( ) ) {
                                 candidates.add( "expectation" );
                                 candidates.add( "conclusion" );
                                 candidates.add( "name" );
                                 candidates.add( "prediction" );
                             }
-                            else if( token.startsWith( "e" ) )
+                            else if ( token.startsWith( "e" ) )
                                 candidates.add( "expectation" );
-                            else if( token.startsWith( "c" ) )
+                            else if ( token.startsWith( "c" ) )
                                 candidates.add( "conclusion" );
-                            else if( token.startsWith( "n" ) )
+                            else if ( token.startsWith( "n" ) )
                                 candidates.add( "name" );
-                            else if( token.startsWith( "p" ) )
+                            else if ( token.startsWith( "p" ) )
                                 candidates.add( "prediction" );
                             break;
-                        case "observation":
-                        case "prediction":
-                        case "expectation":
-                        case "concept":
+                        case "observations":
+                        case "predictions":
+                        case "expectations":
+                        case "concepts":
                             candidates.add( "name" );
                             break;
-                        case "relation":
+                        case "relations":
                             if ( token.isEmpty( ) ) {
                                 candidates.add( "source" );
                                 candidates.add( "target" );
                             }
-                            else if( token.startsWith( "s" ) )
+                            else if ( token.startsWith( "s" ) )
                                 candidates.add( "source" );
-                            else if( token.startsWith( "t" ) )
+                            else if ( token.startsWith( "t" ) )
                                 candidates.add( "target" );
                             break;
                     }
                 }
-                else if( spaceNum == 4 ){
+                else if ( spaceNum == 4 ) {
                     if ( token.isEmpty( ) ) {
                         candidates.add( "==" );
                         candidates.add( "!=" );
@@ -269,21 +241,21 @@ public class Main {
                         candidates.add( "<" );
                         candidates.add( "<=" );
                     }
-                    else if( token.startsWith( "=" ) )
+                    else if ( token.startsWith( "=" ) )
                         candidates.add( "==" );
-                    else if( token.startsWith( "!" ) )
+                    else if ( token.startsWith( "!" ) )
                         candidates.add( "!=" );
-                    else if( token.startsWith( ">" ) ) {
+                    else if ( token.startsWith( ">" ) ) {
                         candidates.add( ">" );
                         candidates.add( ">=" );
                     }
-                    else if( token.startsWith( "<" ) ) {
+                    else if ( token.startsWith( "<" ) ) {
                         candidates.add( "<" );
                         candidates.add( "<=" );
                     }
                 }
             }
-            completeOperation.addCompletionCandidates(candidates );
+            completeOperation.addCompletionCandidates( candidates );
         }
     }
 }
