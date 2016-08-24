@@ -35,15 +35,15 @@ package fr.cea.ig.grools.interpreter;
 
 
 import ch.qos.logback.classic.Logger;
-import fr.cea.ig.grools.Verbosity;
+import fr.cea.ig.grools.reasoner.Verbosity;
 import org.jboss.aesh.complete.CompleteOperation;
 import org.jboss.aesh.complete.Completion;
 import org.jboss.aesh.console.Console;
 import org.jboss.aesh.console.settings.Settings;
 import org.slf4j.LoggerFactory;
 
-import fr.cea.ig.grools.Mode;
-import fr.cea.ig.grools.Reasoner;
+import fr.cea.ig.grools.reasoner.Mode;
+import fr.cea.ig.grools.reasoner.Reasoner;
 import fr.cea.ig.grools.reasoner.ConceptGraph;
 import fr.cea.ig.grools.reasoner.ReasonerImpl;
 import lombok.NonNull;

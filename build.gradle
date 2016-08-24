@@ -75,7 +75,7 @@ repositories {
 dependencies {
     compile     group: 'org.jboss.aesh'     , name: 'aesh'                  , version: '0.66.8'
     compileOnly group: 'org.projectlombok'  , name: 'lombok'                , version: lombokVersion
-    compile     group: theGroup             , name: 'grools-reasoner-engine', version: reasonerEngineVersion
+    compile     group: theGroup             , name: 'grools-reasoner'       , version: reasonerVersion
     compile     group: 'ch.qos.logback'     , name: 'logback-classic'       , version: logbackVersion
     testCompile group: 'junit'              , name: 'junit'                 , version: junitVersion
 }

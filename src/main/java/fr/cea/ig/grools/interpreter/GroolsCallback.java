@@ -1,6 +1,6 @@
 package fr.cea.ig.grools.interpreter;
 
-import fr.cea.ig.grools.Reasoner;
+import fr.cea.ig.grools.reasoner.Reasoner;
 import fr.cea.ig.grools.fact.Observation;
 import fr.cea.ig.grools.fact.PriorKnowledge;
 import org.jboss.aesh.console.Console;
